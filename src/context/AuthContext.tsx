@@ -109,34 +109,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign Up with Email, Password & Full Name
   const signUp = async (email: string, password: string, fullName: string) => {
-    if (!supabase) {
-      return { success: false, sessionCreated: false, error: 'Supabase authentication is not configured.' };
-    }
-
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-          },
-        },
+      // 1. Call secure server-side registration endpoint (bypasses Supabase free tier email rate limits)
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          fullName: fullName.trim(),
+        }),
       });
 
-      if (error) {
-        return { success: false, sessionCreated: false, error: error.message };
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { success: false, sessionCreated: false, error: data.error || 'Registration failed' };
       }
 
-      const hasSession = Boolean(data.session && data.user);
-      if (data.user) {
-        setUser(mapSupabaseUser(data.user));
-        router.refresh();
+      // 2. Automatically sign in immediately to create cookie session
+      const loginResult = await signInWithEmail(email, password);
+      if (!loginResult.success) {
+        return {
+          success: true,
+          sessionCreated: false,
+          error: 'Account created! Please sign in with your password.',
+        };
       }
 
       return {
         success: true,
-        sessionCreated: hasSession,
+        sessionCreated: true,
       };
     } catch (err: any) {
       return { success: false, sessionCreated: false, error: err.message || 'Registration failed.' };

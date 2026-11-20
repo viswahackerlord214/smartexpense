@@ -50,6 +50,7 @@ export async function middleware(request: NextRequest) {
   // Public paths that do not require an active Supabase browser cookie session
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth');
   const isPublicApi =
+    pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/transactions/import') ||
     pathname.startsWith('/api/notifications/test');
   const isStaticAsset =
