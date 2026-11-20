@@ -69,11 +69,6 @@ export function getServerSupabaseAdmin() {
     },
   });
 }
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
 
 /**
  * Retrieves the currently authenticated Supabase user from request cookies.
