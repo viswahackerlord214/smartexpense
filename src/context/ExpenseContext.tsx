@@ -1,9 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Transaction, Category, Budget, FilterGroup } from '@/types';
+import { Transaction, Category, Budget } from '@/types';
 import { DEFAULT_CATEGORIES } from '@/lib/constants/categories';
-import { SEED_TRANSACTIONS, SEED_BUDGETS } from '@/lib/constants/seed-data';
+import { useAuth } from './AuthContext';
 
 interface ExpenseContextType {
   transactions: Transaction[];
@@ -23,9 +23,10 @@ interface ExpenseContextType {
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 export function ExpenseProvider({ children }: { children: React.ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>(SEED_TRANSACTIONS);
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
-  const [budgets, setBudgets] = useState<Budget[]>(SEED_BUDGETS);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeCategorizeId, setActiveCategorizeId] = useState<string | null>(null);
 
@@ -41,6 +42,12 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshData = useCallback(async () => {
+    if (!user) {
+      setTransactions([]);
+      setBudgets([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [txnRes, catRes, bdgRes] = await Promise.all([
@@ -51,9 +58,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
 
       if (txnRes.ok) {
         const { transactions } = await txnRes.json();
-        if (transactions && transactions.length > 0) {
-          setTransactions(transactions);
-        }
+        setTransactions(transactions || []);
       }
 
       if (catRes.ok) {
@@ -65,20 +70,24 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
 
       if (bdgRes.ok) {
         const { budgets } = await bdgRes.json();
-        if (budgets && budgets.length > 0) {
-          setBudgets(budgets);
-        }
+        setBudgets(budgets || []);
       }
     } catch (e) {
-      console.warn('Error fetching API data, using cached state:', e);
+      console.warn('Error fetching API data:', e);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
+  // Re-fetch data whenever user changes (logs in, logs out, or switches accounts)
   useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    if (user) {
+      refreshData();
+    } else {
+      setTransactions([]);
+      setBudgets([]);
+    }
+  }, [user, refreshData]);
 
   // One-tap categorization function
   const categorizeTransaction = async (transactionId: string, categoryId: string): Promise<boolean> => {
@@ -107,10 +116,13 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.ok) {
         console.error('Categorize request failed on server');
+        refreshData();
+        return false;
       }
       return true;
     } catch (err) {
       console.error('Network error during categorize:', err);
+      refreshData();
       return false;
     }
   };
@@ -128,7 +140,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
         return transaction;
       }
     } catch (e) {
-      console.error('Failed to add transaction:', e);
+      console.error('Error adding transaction:', e);
     }
     return null;
   };
@@ -146,32 +158,40 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
         return category;
       }
     } catch (e) {
-      console.error('Failed to add category:', e);
+      console.error('Error adding category:', e);
     }
     return null;
   };
 
-  const saveBudgetLimit = async (categoryId: string | null, limit: number, period: 'monthly' | 'weekly' = 'monthly') => {
+  const saveBudgetLimit = async (
+    categoryId: string | null,
+    limit: number,
+    period: 'monthly' | 'weekly' = 'monthly'
+  ) => {
     try {
       const res = await fetch('/api/budgets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: categoryId, amount_limit: limit, period }),
+        body: JSON.stringify({
+          category_id: categoryId,
+          amount_limit: limit,
+          period,
+        }),
       });
       if (res.ok) {
         const { budget } = await res.json();
         setBudgets((prev) => {
-          const idx = prev.findIndex((b) => b.category_id === categoryId && b.period === period);
-          if (idx !== -1) {
+          const index = prev.findIndex((b) => b.category_id === categoryId && b.period === period);
+          if (index >= 0) {
             const next = [...prev];
-            next[idx] = budget;
+            next[index] = budget;
             return next;
           }
           return [...prev, budget];
         });
       }
     } catch (e) {
-      console.error('Failed to save budget:', e);
+      console.error('Error saving budget limit:', e);
     }
   };
 
@@ -200,8 +220,9 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useExpense() {
-  const ctx = useContext(ExpenseContext);
-  if (!ctx) throw new Error('useExpense must be used within ExpenseProvider');
-  return ctx;
+  const context = useContext(ExpenseContext);
+  if (!context) {
+    throw new Error('useExpense must be used within an ExpenseProvider');
+  }
+  return context;
 }
-

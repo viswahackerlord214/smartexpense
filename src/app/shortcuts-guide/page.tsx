@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Smartphone,
   Copy,
@@ -12,14 +12,32 @@ import {
   AlertCircle,
   ExternalLink,
   Layers,
+  Key,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ShortcutsGuidePage() {
+  const { user } = useAuth();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [activeKeyHint, setActiveKeyHint] = useState<string | null>(null);
 
-  const sampleApiKey = 'sw_live_sec_8f9a2b4e7c1d3a5f6e8b0c2d4e6f8a0b';
-  const sampleUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/transactions/import` : 'https://your-app.vercel.app/api/transactions/import';
+  const sampleUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/api/transactions/import`
+      : 'https://smartexpense-iota.vercel.app/api/transactions/import';
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/keys')
+        .then((r) => r.json())
+        .then((d) => {
+          const active = (d.keys || []).find((k: any) => k.is_active);
+          if (active) setActiveKeyHint(active.key_hint);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const copy = (key: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -28,7 +46,7 @@ export default function ShortcutsGuidePage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-4xl mx-auto pb-12">
       {/* Hero Header */}
       <div>
         <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold mb-2">
@@ -36,20 +54,20 @@ export default function ShortcutsGuidePage() {
           <span>iOS Apple Shortcuts Native Bridge</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          iPhone SMS Automation Setup Guide
+          iPhone Bank SMS Automation Setup Guide
         </h1>
         <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">
-          iOS restricts web browsers from silently reading SMS messages. By using Apple&apos;s native{' '}
+          iOS restricts web applications from silently reading SMS messages. By using Apple&apos;s native{' '}
           <strong className="text-zinc-200">Shortcuts Message Automation</strong>, eligible bank transaction
-          messages are securely forwarded to SpendWise in real-time without manual intervention.
+          messages are securely forwarded to SpendWise in real-time using your personal API secret key.
         </p>
       </div>
 
-      {/* Integration Parameters Card (Quick Copy) */}
+      {/* Integration Parameters Card */}
       <div className="p-6 rounded-3xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center space-x-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Your Secure Webhook Parameters</span>
+          <span>Your Personal Webhook Parameters</span>
         </h3>
 
         <div className="space-y-3">
@@ -75,144 +93,96 @@ export default function ShortcutsGuidePage() {
             </div>
           </div>
 
-          {/* API Secret Key */}
-          <div>
-            <label className="text-xs font-semibold text-zinc-400 block mb-1">
-              Authorization Token (Bearer)
-            </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                readOnly
-                value={sampleApiKey}
-                className="flex-1 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-mono text-zinc-200"
-              />
-              <button
-                onClick={() => copy('token', sampleApiKey)}
-                className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-medium flex items-center space-x-1 border border-zinc-700"
+          {/* API Secret Key notice */}
+          <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-zinc-300 flex items-center space-x-1.5">
+                <Key className="w-3.5 h-3.5 text-purple-400" />
+                <span>Your Individual API Secret Key</span>
+              </span>
+              <Link
+                href="/settings#iphone-shortcuts"
+                className="text-emerald-400 hover:underline flex items-center space-x-1 font-semibold"
               >
-                {copiedKey === 'token' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedKey === 'token' ? 'Copied' : 'Copy'}</span>
-              </button>
+                <span>Manage in Settings</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              Every user has a unique API secret key. Never use a common shared key. If you haven&apos;t generated your personal key yet, visit{' '}
+              <Link href="/settings" className="text-emerald-400 underline">
+                Settings → iPhone Shortcuts
+              </Link>{' '}
+              to generate one.
+            </p>
+            {activeKeyHint && (
+              <div className="text-[11px] text-zinc-400 font-mono">
+                Active Key on this account: <span className="text-emerald-400">{activeKeyHint}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Step-by-Step iOS Setup Walkthrough */}
+      {/* Step by step instructions */}
       <div className="space-y-4">
-        <h3 className="text-base font-bold text-white tracking-tight">
-          Step-by-Step iPhone Automation Configuration
+        <h3 className="text-base font-bold text-white flex items-center space-x-2">
+          <Layers className="w-4 h-4 text-emerald-400" />
+          <span>Step-by-Step iOS Shortcuts Walkthrough</span>
         </h3>
 
-        {/* Step 1 */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-          <div className="flex items-center space-x-3">
-            <span className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-              1
-            </span>
-            <h4 className="text-sm font-semibold text-white">Open the Shortcuts App on your iPhone</h4>
-          </div>
-          <p className="text-xs text-zinc-400 ml-10">
-            Open Apple&apos;s native <strong className="text-zinc-200">Shortcuts</strong> app on iOS 16, 17, or 18.
-            Tap on the <strong className="text-zinc-200">Automation</strong> tab in the bottom navigation bar.
-          </p>
-        </div>
-
-        {/* Step 2 */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-          <div className="flex items-center space-x-3">
-            <span className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-              2
-            </span>
-            <h4 className="text-sm font-semibold text-white">Create a New Message Trigger</h4>
-          </div>
-          <p className="text-xs text-zinc-400 ml-10">
-            Tap the <strong className="text-zinc-200">&quot;+&quot;</strong> icon in the top right, then select{' '}
-            <strong className="text-zinc-200">&quot;Message&quot;</strong>.
-          </p>
-          <div className="ml-10 p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1 font-mono text-zinc-300">
-            <div>• Senders: Leave blank (or select bank shortcodes like HDFCBK, SBI, ICICI)</div>
-            <div>• Message Contains: <span className="text-emerald-400">debited</span> (or <span className="text-emerald-400">spent</span>, <span className="text-emerald-400">Rs.</span>)</div>
-            <div>• When: <span className="text-emerald-400">Run Immediately</span> (Disable &quot;Ask Before Running&quot;)</div>
-          </div>
-        </div>
-
-        {/* Step 3 */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
-          <div className="flex items-center space-x-3">
-            <span className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-              3
-            </span>
-            <h4 className="text-sm font-semibold text-white">Add Action: &quot;Get Contents of URL&quot;</h4>
-          </div>
-          <p className="text-xs text-zinc-400 ml-10">
-            Tap &quot;New Blank Automation&quot; &rarr; Search for the action{' '}
-            <strong className="text-zinc-200">&quot;Get Contents of URL&quot;</strong> and configure the fields:
-          </p>
-
-          <div className="ml-10 p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-2">
-            <div className="font-mono text-zinc-300">
-              <span className="text-zinc-500">URL:</span> {sampleUrl}
+        <div className="space-y-3">
+          <div className="p-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs">
+                1
+              </span>
+              <h4 className="text-xs font-bold text-white">Create a Personal Automation</h4>
             </div>
-            <div className="font-mono text-zinc-300">
-              <span className="text-zinc-500">Method:</span> POST
+            <p className="text-xs text-zinc-400 leading-relaxed pl-8">
+              Open the <strong>Shortcuts</strong> app on your iPhone. Tap the <strong>Automation</strong> tab at the bottom, then tap the <strong>+</strong> button in the top right corner.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs">
+                2
+              </span>
+              <h4 className="text-xs font-bold text-white">Select Message Trigger & Bank Senders</h4>
             </div>
-            <div className="font-mono text-zinc-300">
-              <span className="text-zinc-500">Headers:</span>
-              <div className="ml-4 text-zinc-400">
-                • Content-Type: application/json<br />
-                • Authorization: Bearer {sampleApiKey}
-              </div>
+            <p className="text-xs text-zinc-400 leading-relaxed pl-8">
+              Scroll down and tap <strong>Message</strong>. In the <strong>Sender</strong> field, add your bank sender IDs:
+              <br />
+              <code className="text-emerald-400 font-mono text-[11px] block mt-1.5 p-2 bg-zinc-950 rounded-lg">
+                HDFCBK, SBIINB, ICICIB, AXISBK, KOTAKB, FEDBNK
+              </code>
+              Select <strong>Run Immediately</strong> and turn off <strong>Ask Before Running</strong> for hands-free background automation.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs">
+                3
+              </span>
+              <h4 className="text-xs font-bold text-white">Configure the Webhook POST Action</h4>
             </div>
-            <div className="font-mono text-zinc-300">
-              <span className="text-zinc-500">Request Body (JSON):</span>
-              <pre className="mt-1 p-2 bg-black rounded text-[11px] text-emerald-400">
-{`{
-  "message": Shortcut Input,
-  "sender": Shortcut Input.Sender,
-  "timestamp": Current Date
-}`}
-              </pre>
-            </div>
+            <p className="text-xs text-zinc-400 leading-relaxed pl-8">
+              Add the action <strong>Get Contents of URL</strong>:
+              <br />• <strong>URL:</strong> <code>{sampleUrl}</code>
+              <br />• <strong>Method:</strong> <code>POST</code>
+              <br />• <strong>Headers:</strong>
+              <br />&nbsp;&nbsp;- <code>Authorization</code>: <code>Bearer &lt;YOUR_PERSONAL_API_KEY&gt;</code>
+              <br />&nbsp;&nbsp;- <code>Content-Type</code>: <code>application/json</code>
+              <br />• <strong>Request Body:</strong> <code>JSON</code>
+              <br />&nbsp;&nbsp;- <code>message</code>: choose <em>Shortcut Input</em>
+              <br />&nbsp;&nbsp;- <code>sender</code>: choose <em>Shortcut Input &gt; Sender</em>
+              <br />&nbsp;&nbsp;- <code>timestamp</code>: choose <em>Current Date</em>
+            </p>
           </div>
         </div>
-
-        {/* Step 4 */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-          <div className="flex items-center space-x-3">
-            <span className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-              4
-            </span>
-            <h4 className="text-sm font-semibold text-white">Save & Verify in Playground</h4>
-          </div>
-          <p className="text-xs text-zinc-400 ml-10">
-            Tap &quot;Done&quot;. Whenever a bank SMS matching your conditions arrives on your iPhone, iOS
-            instantly posts the text to SpendWise, extracts the transaction, and delivers an actionable push
-            notification to your lock screen.
-          </p>
-        </div>
-      </div>
-
-      {/* Test Shortcut Navigation Card */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h4 className="text-base font-bold text-white">Ready to test the automation flow?</h4>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Visit the SMS Testing Bench to paste a bank message and trigger an actionable push notification!
-          </p>
-        </div>
-
-        <Link
-          href="/sms-tester"
-          className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs flex items-center space-x-2 shadow-lg shadow-emerald-500/20 transition active:scale-95"
-        >
-          <span>Open SMS Tester</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
     </div>
   );
 }
-
-

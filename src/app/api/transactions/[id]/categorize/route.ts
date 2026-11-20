@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateTransactionCategory, getTransactionById } from '@/lib/data/store';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 const categorizeSchema = z.object({
   categoryId: z.string().min(1, 'Category ID is required'),
@@ -11,6 +14,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Please log in' }, { status: 401 });
+    }
+
     const { id } = params;
     const body = await req.json();
 
@@ -22,12 +30,12 @@ export async function POST(
       );
     }
 
-    const transaction = await getTransactionById(id);
+    const transaction = await getTransactionById(id, user.id);
     if (!transaction) {
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Transaction not found or unauthorized' }, { status: 404 });
     }
 
-    const updated = await updateTransactionCategory(id, parsed.data.categoryId);
+    const updated = await updateTransactionCategory(id, parsed.data.categoryId, user.id);
 
     return NextResponse.json({
       success: true,
@@ -42,4 +50,3 @@ export async function POST(
     );
   }
 }
-

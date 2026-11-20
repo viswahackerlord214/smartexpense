@@ -1,4 +1,4 @@
-import type { ParsedTransactionResult, TransactionType } from '@/types';
+import type { ParsedTransactionResult, TransactionType } from '../../types';
 import crypto from 'crypto';
 
 export interface BankRule {

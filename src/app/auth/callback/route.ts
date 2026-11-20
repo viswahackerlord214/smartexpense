@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -7,13 +9,12 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') || '/';
 
   if (code) {
-    const supabase = getServerSupabase();
+    const supabase = createClient();
     if (supabase) {
       await supabase.auth.exchangeCodeForSession(code);
     }
   }
 
-  // URL to redirect to after sign in process completes
+  // URL to redirect to after sign in or email verification completes
   return NextResponse.redirect(new URL(next, request.url));
 }
-

@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNotificationSubscriptions } from '@/lib/data/store';
 import { sendWebPushNotification } from '@/lib/notifications/web-push';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const subscriptions = await getNotificationSubscriptions();
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Please log in' }, { status: 401 });
+    }
+
+    const subscriptions = await getNotificationSubscriptions(user.id);
 
     if (subscriptions.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: 'No push subscriptions found. Please enable push notifications on your device first.',
+          message: 'No push subscriptions found for your account. Please enable push notifications in Settings first.',
         },
         { status: 404 }
       );
@@ -35,4 +43,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
