@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscribeStatus, setSubscribeStatus] = useState<string | null>(null);
+  const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+  const [testPushStatus, setTestPushStatus] = useState<string | null>(null);
 
   // Individual API Key states
   const [keys, setKeys] = useState<ApiKeyData[]>([]);
@@ -268,6 +270,27 @@ export default function SettingsPage() {
       setSubscribeStatus(`Error: ${err.message}`);
     } finally {
       setIsSubscribing(false);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    setIsSendingTestPush(true);
+    setTestPushStatus(null);
+    try {
+      const res = await fetch('/api/notifications/test', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestPushStatus(`Test push sent! Delivered to ${data.deliveredToCount || 1} device(s). Check your iPhone lock screen.`);
+        await refreshData();
+      } else {
+        setTestPushStatus(data.message || data.error || 'Failed to send test push.');
+      }
+    } catch (err: any) {
+      setTestPushStatus(`Error: ${err.message}`);
+    } finally {
+      setIsSendingTestPush(false);
     }
   };
 
@@ -682,16 +705,29 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800">
-          <button
-            onClick={handleSubscribePush}
-            disabled={isSubscribing}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 disabled:opacity-50"
-          >
-            {isSubscribing ? 'Registering Push...' : 'Enable / Re-subscribe Push Notifications'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleSubscribePush}
+              disabled={isSubscribing}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 disabled:opacity-50"
+            >
+              {isSubscribing ? 'Registering Push...' : 'Enable / Re-subscribe Push Notifications'}
+            </button>
 
-          {subscribeStatus && (
-            <span className="text-xs text-emerald-400 font-medium">{subscribeStatus}</span>
+            <button
+              onClick={handleSendTestPush}
+              disabled={isSendingTestPush}
+              className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs border border-zinc-700 transition active:scale-95 disabled:opacity-50 flex items-center space-x-1.5"
+            >
+              {isSendingTestPush ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5 text-emerald-400" />}
+              <span>Send Test Push to iPhone</span>
+            </button>
+          </div>
+
+          {(subscribeStatus || testPushStatus) && (
+            <span className="text-xs text-emerald-400 font-medium">
+              {testPushStatus || subscribeStatus}
+            </span>
           )}
         </div>
 

@@ -33,11 +33,16 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
   // Check URL query param for deep link (e.g. ?categorize=txn-001)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const catId = urlParams.get('categorize');
-      if (catId) {
-        setActiveCategorizeId(catId);
-      }
+      const checkParam = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const catId = urlParams.get('categorize');
+        if (catId) {
+          setActiveCategorizeId(catId);
+        }
+      };
+      checkParam();
+      window.addEventListener('popstate', checkParam);
+      return () => window.removeEventListener('popstate', checkParam);
     }
   }, []);
 

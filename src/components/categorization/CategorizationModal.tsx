@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useExpense } from '@/context/ExpenseContext';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
-import { Check, X, Plus, Sparkles, Building2, Calendar, CreditCard } from 'lucide-react';
+import { Check, X, Plus, Sparkles, Building2, Calendar, CreditCard, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function CategorizationModal() {
@@ -25,8 +25,26 @@ export function CategorizationModal() {
 
   const transaction = transactions.find((t) => t.id === activeCategorizeId);
 
-  if (!activeCategorizeId || !transaction) {
+  if (!activeCategorizeId) {
     return null;
+  }
+
+  if (!transaction) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+        <div className="p-6 rounded-3xl bg-zinc-950 border border-zinc-800 text-center space-y-3 max-w-sm w-full shadow-2xl">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto" />
+          <div className="text-sm font-bold text-white">Loading transaction details...</div>
+          <p className="text-xs text-zinc-400">Opening deep-linked transaction from notification</p>
+          <button
+            onClick={() => setActiveCategorizeId(null)}
+            className="text-xs text-zinc-500 hover:text-zinc-300 pt-2 block mx-auto underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const handleSelectCategory = async (catId: string, catName: string) => {
