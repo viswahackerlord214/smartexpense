@@ -200,14 +200,19 @@ export async function revokeUserApiKey(userId: string, keyId?: string): Promise<
  * Identifies the exact user owner and ensures key is active.
  * Updates last_used_at on successful verification.
  */
-export async function validateApiKey(rawKey: string): Promise<ApiKeyValidationResult> {
+export function validateApiKey(rawKey: string): Promise<ApiKeyValidationResult> {
   if (!rawKey || typeof rawKey !== 'string') {
-    return { valid: false, error: 'API key is required' };
+    return Promise.resolve({ valid: false, error: 'API key is required' });
   }
 
-  const cleanKey = rawKey.trim().replace(/^Bearer\s+/i, '');
+  const cleanKey = rawKey
+    .trim()
+    .replace(/^Bearer\s*:?\s*/i, '')
+    .trim()
+    .replace(/^["']|["']$/g, '');
+
   if (!cleanKey) {
-    return { valid: false, error: 'Empty API key provided' };
+    return Promise.resolve({ valid: false, error: 'Empty API key provided' });
   }
 
   const hash = hashApiKey(cleanKey);
