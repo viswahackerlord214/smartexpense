@@ -1,7 +1,9 @@
 module.exports = {
   plugins: {
     tailwindcss: {},
-    autoprefixer: {},
+    autoprefixer: {
+      overrideBrowserslist: ['defaults', 'last 2 versions', 'not dead'],
+    },
   },
 };
 
