@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBudgets, saveBudget } from '@/lib/data/store';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const budgets = await getBudgets();

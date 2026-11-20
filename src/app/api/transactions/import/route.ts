@@ -8,6 +8,8 @@ import {
 } from '@/lib/data/store';
 import { sendWebPushNotification } from '@/lib/notifications/web-push';
 
+export const dynamic = 'force-dynamic';
+
 const importSchema = z.object({
   message: z.string().min(5, 'SMS message content is required'),
   sender: z.string().optional().default('UNKNOWN'),
