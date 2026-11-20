@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabaseAdmin } from '@/lib/supabase/server';
+import { getServerSupabaseAdmin, createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -24,44 +24,93 @@ export async function POST(req: NextRequest) {
 
     const { email, password, fullName } = parsed.data;
 
-    const supabaseAdmin = getServerSupabaseAdmin();
-    if (!supabaseAdmin) {
+    // Check if Supabase URL is present
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || supabaseUrl.includes('your-project-id')) {
       return NextResponse.json(
-        { error: 'Server database configuration missing' },
+        {
+          error:
+            'Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) are missing in Vercel Settings → Environment Variables.',
+        },
         { status: 500 }
       );
     }
 
-    // Create user via Supabase Admin API with email pre-confirmed
-    // This avoids hitting the Supabase free tier 3-emails/hour SMTP rate limit
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const supabaseAdmin = getServerSupabaseAdmin();
+
+    // 1. If admin client is available, create user with pre-confirmed email (bypasses SMTP rate limits)
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email: email.trim().toLowerCase(),
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName.trim(),
+        },
+      });
+
+      if (error) {
+        if (error.message.includes('already registered') || error.message.includes('unique')) {
+          return NextResponse.json(
+            { error: 'An account with this email already exists. Please sign in instead.' },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: fullName.trim(),
+          },
+          message: 'Account created successfully.',
+        },
+        { status: 201 }
+      );
+    }
+
+    // 2. Fallback: Standard client sign up if Service Role Key is not yet configured in Vercel
+    const client = createClient();
+    if (!client) {
+      return NextResponse.json(
+        {
+          error:
+            'Please add SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL in Vercel Settings → Environment Variables.',
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: clientData, error: clientError } = await client.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName.trim(),
+      options: {
+        data: {
+          full_name: fullName.trim(),
+        },
       },
     });
 
-    if (error) {
-      if (error.message.includes('already registered') || error.message.includes('unique')) {
-        return NextResponse.json(
-          { error: 'An account with this email address already exists. Please sign in instead.' },
-          { status: 409 }
-        );
-      }
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (clientError) {
+      return NextResponse.json({ error: clientError.message }, { status: 400 });
     }
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: fullName.trim(),
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: clientData.user?.id,
+          email: clientData.user?.email,
+          name: fullName.trim(),
+        },
+        message: 'Account created successfully.',
       },
-      message: 'Account created and verified successfully.',
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch (err: any) {
     console.error('Registration API error:', err);
     return NextResponse.json(

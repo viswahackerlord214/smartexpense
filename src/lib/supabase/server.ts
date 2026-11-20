@@ -18,11 +18,14 @@ export const isSupabaseServerConfigured = Boolean(
  * Automatically handles cookie reading and writing via Next.js cookies().
  */
 export function createClient() {
-  if (!isSupabaseServerConfigured) return null;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  if (!url || !anonKey || url.includes('your-project-id')) return null;
 
   const cookieStore = cookies();
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(url, anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -51,13 +54,21 @@ export function createClient() {
  * and bypasses RLS when explicitly required on the server.
  */
 export function getServerSupabaseAdmin() {
-  const serviceKey = supabaseServiceKey || supabaseAnonKey;
-  if (!supabaseUrl || !serviceKey || supabaseUrl.includes('your-project-id')) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  if (!url || !serviceKey || url.includes('your-project-id')) {
     return null;
   }
 
-  return createSupabaseClient(supabaseUrl, serviceKey, {
+  return createSupabaseClient(url, serviceKey, {
     auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
       persistSession: false,
       autoRefreshToken: false,
     },
