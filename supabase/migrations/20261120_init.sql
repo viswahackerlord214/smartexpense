@@ -179,3 +179,4 @@ VALUES
     (NULL, 'Other', 'other', 'HelpCircle', '#71717a', 'expense', false)
 ON CONFLICT DO NOTHING;
 
+
