@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getNotificationSubscriptions, createTransaction, getTransactions } from '@/lib/data/store';
+import { getNotificationSubscriptions, getTransactions } from '@/lib/data/store';
 import { sendWebPushNotification } from '@/lib/notifications/web-push';
 import { getAuthenticatedUser } from '@/lib/supabase/server';
 
@@ -19,52 +19,33 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           message:
-            'No active push notification subscriptions found on your account. Please enable push notifications on your iPhone PWA first.',
+            'No active push notification subscriptions found on your account. Please enable push notifications on your iPhone PWA in Settings first.',
         },
         { status: 404 }
       );
     }
 
-    // Find an existing pending transaction or create a real test pending transaction in Supabase
-    let targetTxnId: string;
+    // Check if user has an existing transaction to link to
     const existingTxns = await getTransactions(user.id);
-    const existingPending = existingTxns.find((t) => t.status === 'pending_categorization');
+    const existingPending = existingTxns.find((t) => t.status === 'pending_categorization') || existingTxns[0];
 
-    if (existingPending) {
-      targetTxnId = existingPending.id;
-    } else {
-      const sample = await createTransaction(
-        {
-          user_id: user.id,
-          amount: 850,
-          currency: 'INR',
-          transaction_type: 'debit',
-          merchant: 'Swiggy',
-          bank_sender: 'HDFCBK',
-          transaction_date: new Date().toISOString(),
-          status: 'pending_categorization',
-          raw_message_hash: `test-${Date.now()}`,
-          confidence_score: 1.0,
-          notes: 'Test Notification Transaction • Tap to categorize',
-        },
-        user.id
-      );
-      targetTxnId = sample.id;
-    }
+    const targetUrl = existingPending ? `/?categorize=${existingPending.id}` : '/';
 
     const result = await sendWebPushNotification(subscriptions, {
-      title: 'SpendWise • ₹850.00 spent!',
-      body: 'Bank: HDFC Bank • Merchant: Swiggy\nWhere did you spend this money? Tap to categorize.',
-      url: `/?categorize=${targetTxnId}`,
-      transactionId: targetTxnId,
-      amount: 850,
-      merchant: 'Swiggy',
+      title: 'SpendWise • Push Notification Active!',
+      body: existingPending
+        ? `Bank: ${existingPending.bank_sender} • Merchant: ${existingPending.merchant}\nTap to categorize this transaction.`
+        : 'Your iPhone push notifications are operational. Bank SMS arrivals will alert you here in real-time.',
+      url: targetUrl,
+      transactionId: existingPending?.id,
+      amount: existingPending?.amount,
+      merchant: existingPending?.merchant,
     });
 
     return NextResponse.json({
       success: result.successCount > 0,
       deliveredToCount: result.successCount,
-      transactionId: targetTxnId,
+      transactionId: existingPending?.id,
       result,
       message:
         result.successCount > 0
