@@ -5,6 +5,7 @@ import { useExpense } from '@/context/ExpenseContext';
 import { FilterToolbar } from '@/components/transactions/FilterToolbar';
 import { CustomFilterBuilderModal } from '@/components/transactions/CustomFilterBuilderModal';
 import { TransactionsTable } from '@/components/transactions/TransactionsTable';
+import { AddExpenseModal } from '@/components/transactions/AddExpenseModal';
 import { FilterGroup, TransactionType, TransactionStatus, SavedFilter } from '@/types';
 import { filterByDatePreset, QuickDatePreset, evaluateFilterGroup } from '@/lib/filters/filter-engine';
 import { Bookmark, Layers, Plus } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function TransactionsPage() {
   // Custom AND/OR Filter Group State
   const [customFilterGroup, setCustomFilterGroup] = useState<FilterGroup | null>(null);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [savedViews, setSavedViews] = useState<{ name: string; group: FilterGroup }[]>([
     {
       name: 'High Value (>₹1,000)',
@@ -172,7 +174,7 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Saved Views Chips */}
+      {/* Page Header with Actions & Saved Views */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">Transactions</h1>
@@ -181,21 +183,32 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        {/* Saved Views quick bar */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-zinc-500 flex items-center space-x-1 mr-1">
-            <Bookmark className="w-3.5 h-3.5 text-purple-400" />
-            <span>Views:</span>
-          </span>
-          {savedViews.map((sv, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleApplySavedView(sv.group)}
-              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition"
-            >
-              {sv.name}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Saved Views quick bar */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-zinc-500 flex items-center space-x-1 mr-1">
+              <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+              <span>Views:</span>
+            </span>
+            {savedViews.map((sv, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleApplySavedView(sv.group)}
+                className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition"
+              >
+                {sv.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Add Expense Button */}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Expense</span>
+          </button>
         </div>
       </div>
 
@@ -263,6 +276,12 @@ export default function TransactionsPage() {
         onSaveView={(name, group) => {
           setSavedViews((prev) => [...prev, { name, group }]);
         }}
+      />
+
+      {/* Manual Expense Entry Modal */}
+      <AddExpenseModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
       />
     </div>
   );

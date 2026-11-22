@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Transaction, Category } from '@/types';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { useExpense } from '@/context/ExpenseContext';
 import { format } from 'date-fns';
 import {
   ArrowDownLeft,
@@ -13,6 +14,10 @@ import {
   Download,
   Calendar,
   Layers,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 
 interface TransactionsTableProps {
@@ -30,6 +35,22 @@ export function TransactionsTable({
   groupBy,
   setGroupBy,
 }: TransactionsTableProps) {
+  const { deleteTransaction } = useExpense();
+  const [txnToDelete, setTxnToDelete] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!txnToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteTransaction(txnToDelete.id);
+      setTxnToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete transaction:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   // Compute totals
   const totalDebit = transactions
     .filter((t) => t.transaction_type === 'debit')
@@ -127,12 +148,13 @@ export function TransactionsTable({
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4 text-right">Amount</th>
                 <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
+                  <td colSpan={7} className="py-12 text-center text-zinc-500">
                     No transactions match the selected filter criteria.
                   </td>
                 </tr>
@@ -258,6 +280,17 @@ export function TransactionsTable({
                           </span>
                         )}
                       </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          onClick={() => setTxnToDelete(txn)}
+                          title="Delete transaction"
+                          className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition opacity-80 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -266,6 +299,66 @@ export function TransactionsTable({
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {txnToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div
+            className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-5 shadow-2xl text-zinc-100 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center space-x-3 text-rose-400">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Delete Transaction?</h4>
+                <p className="text-[11px] text-zinc-400">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs space-y-1">
+              <div className="font-semibold text-white">{txnToDelete.merchant}</div>
+              <div className="flex items-center justify-between text-zinc-400 text-[11px]">
+                <span>{format(new Date(txnToDelete.transaction_date), 'MMM dd, yyyy • h:mm a')}</span>
+                <span className="font-bold text-white">
+                  {txnToDelete.transaction_type === 'debit' ? '-' : '+'}₹
+                  {txnToDelete.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-zinc-800/80">
+              <button
+                type="button"
+                onClick={() => setTxnToDelete(null)}
+                disabled={isDeleting}
+                className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/20 transition disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

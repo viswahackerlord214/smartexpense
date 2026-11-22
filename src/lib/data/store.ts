@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Transaction, Category, Budget, SavedFilter, NotificationSubscriptionRecord } from '../../types';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { getServerSupabaseAdmin } from '../supabase/server';
@@ -72,21 +73,29 @@ export async function createTransaction(
     throw new Error('Database connection not configured.');
   }
 
+  // Generate SHA-256 64-char hash for manual or unhashed inputs
+  const rawHash =
+    txn.raw_message_hash ||
+    crypto
+      .createHash('sha256')
+      .update(`manual-${userId}-${Date.now()}-${Math.random()}-${txn.amount}-${txn.merchant}`)
+      .digest('hex');
+
   const insertPayload = {
     user_id: userId,
     amount: txn.amount,
     currency: txn.currency || 'INR',
-    transaction_type: txn.transaction_type,
+    transaction_type: txn.transaction_type || 'debit',
     merchant: txn.merchant,
-    bank_sender: txn.bank_sender,
+    bank_sender: txn.bank_sender || 'MANUAL',
     transaction_reference: txn.transaction_reference || null,
     card_last4: txn.card_last4 || null,
     upi_ref: txn.upi_ref || null,
-    account_type: txn.account_type || 'savings',
-    transaction_date: txn.transaction_date,
+    account_type: txn.account_type || 'manual',
+    transaction_date: txn.transaction_date || new Date().toISOString(),
     category_id: txn.category_id || null,
-    status: txn.status || 'pending_categorization',
-    raw_message_hash: txn.raw_message_hash,
+    status: txn.status || (txn.category_id ? 'categorized' : 'pending_categorization'),
+    raw_message_hash: rawHash,
     confidence_score: txn.confidence_score ?? 1.0,
     notes: txn.notes || null,
   };
@@ -103,6 +112,26 @@ export async function createTransaction(
   }
 
   return data as Transaction;
+}
+
+export async function deleteTransaction(id: string, userId: string): Promise<boolean> {
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) {
+    throw new Error('Database connection not configured.');
+  }
+
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error deleting transaction:', error);
+    throw new Error(`Failed to delete transaction: ${error.message}`);
+  }
+
+  return true;
 }
 
 export async function updateTransactionCategory(

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { FinancialOverviewCards } from '@/components/dashboard/FinancialOverviewCards';
 import { SpendingTrendChart } from '@/components/dashboard/SpendingTrendChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
@@ -8,14 +8,16 @@ import { DailySpendingBarChart } from '@/components/dashboard/DailySpendingBarCh
 import { MonthlyComparisonChart } from '@/components/dashboard/MonthlyComparisonChart';
 import { SpendingInsightsCard } from '@/components/dashboard/SpendingInsightsCard';
 import { SpendingHeatmap } from '@/components/dashboard/SpendingHeatmap';
+import { AddExpenseModal } from '@/components/transactions/AddExpenseModal';
 import { useExpense } from '@/context/ExpenseContext';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { ArrowRight, Smartphone, ShieldCheck, Zap, User } from 'lucide-react';
+import { ArrowRight, Smartphone, ShieldCheck, Zap, User, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const { pendingCount, transactions } = useExpense();
   const { user } = useAuth();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'there';
 
@@ -48,6 +50,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Expense</span>
+            </button>
+
             <Link
               href="/transactions"
               className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition"
@@ -58,7 +68,7 @@ export default function DashboardPage() {
 
             <Link
               href="/shortcuts-guide"
-              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition"
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition"
             >
               <span>Setup iPhone Automation</span>
               <ArrowRight className="w-4 h-4" />
@@ -90,6 +100,12 @@ export default function DashboardPage() {
 
       {/* Section F: Spending Intelligence Insights */}
       <SpendingInsightsCard />
+
+      {/* Manual Expense Entry Modal */}
+      <AddExpenseModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+      />
     </div>
   );
 }

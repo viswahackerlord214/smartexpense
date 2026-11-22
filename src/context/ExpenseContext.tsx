@@ -14,6 +14,7 @@ interface ExpenseContextType {
   setActiveCategorizeId: (id: string | null) => void;
   categorizeTransaction: (transactionId: string, categoryId: string) => Promise<boolean>;
   addTransaction: (txn: Partial<Transaction>) => Promise<Transaction | null>;
+  deleteTransaction: (id: string) => Promise<boolean>;
   addCategory: (name: string, color: string, icon: string) => Promise<Category | null>;
   saveBudgetLimit: (categoryId: string | null, limit: number, period?: 'monthly' | 'weekly') => Promise<void>;
   refreshData: () => Promise<void>;
@@ -141,13 +142,39 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         const { transaction } = await res.json();
-        setTransactions((prev) => [transaction, ...prev]);
-        return transaction;
+        // Ensure category object is attached if category_id exists
+        const enrichedTxn = {
+          ...transaction,
+          category: transaction.category || categories.find((c) => c.id === transaction.category_id),
+        };
+        setTransactions((prev) => [enrichedTxn, ...prev]);
+        return enrichedTxn;
       }
     } catch (e) {
       console.error('Error adding transaction:', e);
     }
     return null;
+  };
+
+  const deleteTransaction = async (id: string): Promise<boolean> => {
+    // Optimistic deletion
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+
+    try {
+      const res = await fetch(`/api/transactions/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        console.error('Delete transaction failed on server');
+        refreshData();
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('Error deleting transaction:', e);
+      refreshData();
+      return false;
+    }
   };
 
   const addCategory = async (name: string, color: string, icon: string): Promise<Category | null> => {
@@ -213,6 +240,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
         setActiveCategorizeId,
         categorizeTransaction,
         addTransaction,
+        deleteTransaction,
         addCategory,
         saveBudgetLimit,
         refreshData,
