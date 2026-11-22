@@ -27,7 +27,7 @@ const NAV_LINKS = [
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/analytics', label: 'Analytics', icon: PieChart },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/shortcuts-guide', label: 'iOS Shortcuts', icon: BookOpen },
+  { href: '/shortcuts-guide', label: 'Automations', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

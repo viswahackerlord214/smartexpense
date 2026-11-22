@@ -70,7 +70,7 @@ export default function DashboardPage() {
               href="/shortcuts-guide"
               className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition"
             >
-              <span>Setup iPhone Automation</span>
+              <span>Setup Mobile Automation</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
